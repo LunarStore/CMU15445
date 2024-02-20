@@ -90,7 +90,10 @@ class BasicPageGuard {
 class ReadPageGuard {
  public:
   ReadPageGuard() = default;
-  ReadPageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {}
+  ReadPageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {
+    guard_.page_->RLatch();
+    locked_ = true;
+  }
   ReadPageGuard(const ReadPageGuard &) = delete;
   auto operator=(const ReadPageGuard &) -> ReadPageGuard & = delete;
 
@@ -145,12 +148,16 @@ class ReadPageGuard {
  private:
   // You may choose to get rid of this and add your own private variables.
   BasicPageGuard guard_;
+  bool locked_ = false;
 };
 
 class WritePageGuard {
  public:
   WritePageGuard() = default;
-  WritePageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {}
+  WritePageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {
+    guard_.page_->WLatch();
+    locked_ = true;
+  }
   WritePageGuard(const WritePageGuard &) = delete;
   auto operator=(const WritePageGuard &) -> WritePageGuard & = delete;
 
@@ -212,6 +219,7 @@ class WritePageGuard {
  private:
   // You may choose to get rid of this and add your own private variables.
   BasicPageGuard guard_;
+  bool locked_ = false;
 };
 
 }  // namespace bustub

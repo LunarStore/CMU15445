@@ -100,12 +100,15 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
             curr_size_++;
             BUSTUB_ASSERT(curr_size_ <= replacer_size_, "");
         }
-    }   // 什么也不做
+    }else{// 什么也不做
+        BUSTUB_ASSERT(false, "");
+    }
+    // 考虑可以自学习？
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
     std::lock_guard<std::mutex> lock(latch_);
-    BUSTUB_ASSERT(frame_id <= (frame_id_t)replacer_size_, "");
+    BUSTUB_ASSERT(frame_id < (frame_id_t)replacer_size_, "");
 
     auto target = node_store_.find(frame_id);
     if(target != node_store_.end()){
