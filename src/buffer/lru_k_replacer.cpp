@@ -105,7 +105,7 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
     std::lock_guard<std::mutex> lock(latch_);
-    BUSTUB_ASSERT(frame_id <= (frame_id_t)replacer_size_, "");
+    BUSTUB_ASSERT(frame_id < (frame_id_t)replacer_size_, "");
 
     auto target = node_store_.find(frame_id);
     if(target != node_store_.end()){
