@@ -100,7 +100,10 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
             curr_size_++;
             BUSTUB_ASSERT(curr_size_ <= replacer_size_, "");
         }
-    }   // 什么也不做
+    }else{// 什么也不做
+        BUSTUB_ASSERT(false, "");
+    }
+    // 考虑可以自学习？
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
