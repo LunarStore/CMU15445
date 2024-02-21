@@ -257,10 +257,10 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
     pages_[frame_id].pin_count_ = 0;
     pages_[frame_id].is_dirty_ = false;
 
-    pages_[target->second].WUnlatch();
+    pages_[frame_id].WUnlatch();
 
     free_list_.push_back(frame_id);
-    return false;
+    return true;
 }
 
 auto BufferPoolManager::AllocatePage() -> page_id_t { return next_page_id_++; }
