@@ -22,7 +22,8 @@
 namespace bustub {
 
 using bustub::DiskManagerUnlimitedMemory;
-void Dump2Name(BPlusTree<GenericKey<8>, RID, GenericComparator<8>> &tree, BufferPoolManager *bpm, const char* pattern, int64_t key){
+void Dump2Name(BPlusTree<GenericKey<8>, RID, GenericComparator<8>> &tree, BufferPoolManager *bpm, const char *pattern,
+               int64_t key) {
   const int max_size = 100;
 
   char name[max_size];
@@ -102,7 +103,6 @@ TEST(BPlusTreeTests, DeleteTest1) {
   delete transaction;
   delete bpm;
 }
-
 
 // DISABLED_
 TEST(BPlusTreeTests, DeleteTest2) {

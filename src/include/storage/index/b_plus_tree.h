@@ -132,13 +132,13 @@ class BPlusTree {
 
   void SetRootPageId(page_id_t page_id);
 
-  void FindPath(const KeyType &key, Context& ctx, bool write, Transaction *txn = nullptr);
+  void FindPath(const KeyType &key, Context &ctx, bool write, Transaction *txn = nullptr);
 
-  void InsertInParent(page_id_t left_child, KeyType key, page_id_t right_child, Context& ctx);
+  void InsertInParent(page_id_t left_child, KeyType key, page_id_t right_child, Context &ctx);
 
-  void ChangeRoot(page_id_t left_child, KeyType key, page_id_t right_child);
+  void ChangeRoot(page_id_t left_child, KeyType key, page_id_t right_child, Context &ctx);
 
-  void RemoveInParent(int idx, Context& ctx);
+  void RemoveInParent(int idx, Context &ctx);
 
   // member variable
   std::string index_name_;

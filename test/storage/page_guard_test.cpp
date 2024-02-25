@@ -47,14 +47,12 @@ TEST(PageGuardTest, SampleTest) {
   page_id_t page1_id;
   auto *page1 = bpm->NewPage(&page1_id);
   {
-
     bpm->UnpinPage(page1_id, false);
     EXPECT_EQ(0, page1->GetPinCount());
 
     ReadPageGuard guard = bpm->FetchPageRead(page_id_temp);
 
     guard = bpm->FetchPageRead(page1_id);
-
 
     EXPECT_EQ(page1->GetData(), guard.GetData());
     EXPECT_EQ(page1->GetPageId(), guard.PageId());
