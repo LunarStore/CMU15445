@@ -58,7 +58,29 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto ValueAt(int index) const -> ValueType;
+  auto EntryAt(int index) const -> const MappingType&;
+  // me impl
 
+  // 二分查找第一个大于等于key的位置
+  auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
+
+  auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) -> int;
+
+  // 将this的[begin, end)的数据移动追加到dest
+  void MoveTo(int begin, int end, B_PLUS_TREE_LEAF_PAGE_TYPE& dest);
+
+  void Append(const MappingType* begin, const MappingType* end);
+
+  auto Remove(const KeyType &key, const KeyComparator &comparator) -> int;
+
+  void Prepend(const MappingType& entry);
+
+  void Append(const MappingType& entry);
+
+  auto PopBack() -> MappingType;
+
+  auto PopFront()-> MappingType;
   /**
    * @brief for test only return a string representing all keys in
    * this leaf page formatted as "(key1,key2,key3,...)"

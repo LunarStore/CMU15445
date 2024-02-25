@@ -49,18 +49,12 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
     replacer_->SetEvictable(frame_id, false);
 
     Page *page = pages_ + frame_id;
-    {
 
-        page->WLatch();
+    page->page_id_ = AllocatePage();
+    page->pin_count_ = 1;
+    page->is_dirty_ = false;
 
-        page->page_id_ = AllocatePage();
-        page->pin_count_ = 1;
-        page->is_dirty_ = false;
-
-        *page_id = page->page_id_;
-
-        page->WUnlatch();   
-    }
+    *page_id = page->page_id_;
 
     page_table_.insert(std::make_pair(*page_id, frame_id));
     return page;
@@ -78,22 +72,19 @@ auto BufferPoolManager::NewFrameUnlocked(frame_id_t &frame_id) -> Page *{
         bool ret = replacer_->Evict(&frame_id);
         if(ret == true){    // 驱除成功
             // BUSTUB_ASSERT(frame_id != -1, "");
-            
-            {
-                pages_[frame_id].WLatch();
-                if(pages_[frame_id].IsDirty()){
-                    // 脏页写回磁盘
-                    disk_manager_->WritePage(pages_[frame_id].GetPageId(), pages_[frame_id].GetData());
-                }
-                pages_[frame_id].ResetMemory();
-                page_table_.erase(pages_[frame_id].GetPageId());    // 在page_table_上清除pageid -> frameid
+            BUSTUB_ASSERT(pages_[frame_id].GetPinCount() == 0, "");
 
-                pages_[frame_id].page_id_ = INVALID_PAGE_ID;
-                pages_[frame_id].pin_count_ = 0;
-                pages_[frame_id].is_dirty_ = false;
-
-                pages_[frame_id].WUnlatch();
+            if(pages_[frame_id].IsDirty()){
+                // 脏页写回磁盘
+                disk_manager_->WritePage(pages_[frame_id].GetPageId(), pages_[frame_id].GetData());
             }
+            pages_[frame_id].ResetMemory();
+            page_table_.erase(pages_[frame_id].GetPageId());    // 在page_table_上清除pageid -> frameid
+
+            pages_[frame_id].page_id_ = INVALID_PAGE_ID;
+            pages_[frame_id].pin_count_ = 0;
+            pages_[frame_id].is_dirty_ = false;
+
         }else{
             // 没有多余或者可驱除的frame。
             return nullptr;
@@ -101,11 +92,8 @@ auto BufferPoolManager::NewFrameUnlocked(frame_id_t &frame_id) -> Page *{
     }
 
     BUSTUB_ASSERT(frame_id != -1, "");
-    {
-        pages_[frame_id].RLatch();
-        BUSTUB_ASSERT(pages_[frame_id].page_id_ == INVALID_PAGE_ID, "");    // 没被占用
-        pages_[frame_id].RUnlatch();
-    }
+
+    BUSTUB_ASSERT(pages_[frame_id].page_id_ == INVALID_PAGE_ID, "");    // 没被占用
     return pages_ + frame_id;
 }
 
@@ -116,15 +104,12 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
     if(target != page_table_.end()){
         // page在内存中
         frame_id = target->second;
-        {
-            pages_[frame_id].WLatch();
-            BUSTUB_ASSERT(page_id == pages_[frame_id].GetPageId(), "");
-            replacer_->RecordAccess(frame_id);  // 确保frame存在于replacer中，并添加一条history
-            replacer_->SetEvictable(frame_id, false);
-            pages_[frame_id].pin_count_++;  // 引用计数加一
 
-            pages_[frame_id].WUnlatch();
-        }
+        BUSTUB_ASSERT(page_id == pages_[frame_id].GetPageId(), "");
+        replacer_->RecordAccess(frame_id);  // 确保frame存在于replacer中，并添加一条history
+        replacer_->SetEvictable(frame_id, false);
+        pages_[frame_id].pin_count_++;  // 引用计数加一
+
         //return pages_ + frame_id;
     }else{
         // page不在内存中
@@ -133,17 +118,14 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
         replacer_->RecordAccess(frame_id);  // 确保frame存在于replacer中，并添加一条history
         replacer_->SetEvictable(frame_id, false);
 
-        {
-            pages_[frame_id].WLatch();
-            // 从磁盘读数据到frame上
-            disk_manager_->ReadPage(page_id, pages_[frame_id].GetData());
 
-            // 初始化frame相关的参数
-            pages_[frame_id].page_id_ = page_id;
-            pages_[frame_id].pin_count_ = 1;
-            pages_[frame_id].is_dirty_ = false;
-            pages_[frame_id].WUnlatch();
-        }
+        // 从磁盘读数据到frame上
+        disk_manager_->ReadPage(page_id, pages_[frame_id].GetData());
+
+        // 初始化frame相关的参数
+        pages_[frame_id].page_id_ = page_id;
+        pages_[frame_id].pin_count_ = 1;
+        pages_[frame_id].is_dirty_ = false;
 
 
         // 建立page_id -> frame_id的映射
@@ -158,10 +140,8 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
     std::lock_guard<std::mutex> lock(latch_);
     auto target = page_table_.find(page_id);
 
-    pages_[target->second].WLatch();
     //合法性判断
     if(target == page_table_.end() || pages_[target->second].GetPinCount() == 0){
-        pages_[target->second].WUnlatch();
         return false;
     }
     frame_id_t frame_id = target->second;
@@ -177,7 +157,6 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
     if(is_dirty == true){
         pages_[frame_id].is_dirty_ = true;
     }
-    pages_[target->second].WUnlatch();
     return true;;
 }
 
@@ -191,14 +170,12 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
     }
     frame_id_t frame_id = target->second;
     
-    pages_[frame_id].WLatch();
 
     BUSTUB_ASSERT(page_id == pages_[frame_id].GetPageId(), "");
     // flush
     disk_manager_->WritePage(page_id, pages_[frame_id].GetData());
     pages_[frame_id].is_dirty_ = false;
 
-    pages_[frame_id].WUnlatch();
     return true;
 }
 
@@ -210,14 +187,12 @@ void BufferPoolManager::FlushAllPages() {
         page_id_t page_id = it.first;
         frame_id_t frame_id = it.second;
 
-        pages_[frame_id].WLatch();
 
         BUSTUB_ASSERT(page_id == pages_[frame_id].GetPageId(), "");
         // flush
         disk_manager_->WritePage(page_id, pages_[frame_id].GetData());
         pages_[frame_id].is_dirty_ = false;
 
-        pages_[frame_id].WUnlatch();
     }
 }
 
@@ -231,10 +206,8 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
         return true;
     }
 
-    pages_[target->second].WLatch();
 
     if(pages_[target->second].GetPinCount() > 0){
-        pages_[target->second].WUnlatch();
         return false;
     }
     frame_id_t frame_id = target->second;
@@ -257,7 +230,6 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
     pages_[frame_id].pin_count_ = 0;
     pages_[frame_id].is_dirty_ = false;
 
-    pages_[frame_id].WUnlatch();
 
     free_list_.push_back(frame_id);
     return true;

@@ -22,8 +22,20 @@
 namespace bustub {
 
 using bustub::DiskManagerUnlimitedMemory;
+void Dump2Name(BPlusTree<GenericKey<8>, RID, GenericComparator<8>> &tree, BufferPoolManager *bpm, const char* pattern, int64_t key){
+  const int max_size = 100;
 
-TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
+  char name[max_size];
+  snprintf(name, max_size, "/root/workspace/CMU15445/build/delete_test/%s%ld.txt", pattern, key);
+
+  tree.Draw(bpm, name);
+
+  snprintf(name, max_size, "dot -Tpng -O /root/workspace/CMU15445/build/delete_test/%s%ld.txt", pattern, key);
+
+  std::cout << "name is " << name << std::endl;
+  system(name);
+}
+TEST(BPlusTreeTests, DeleteTest1) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -34,7 +46,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
   page_id_t page_id;
   auto header_page = bpm->NewPage(&page_id);
   // create b+ tree
-  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator);
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator, 2, 3);
   GenericKey<8> index_key;
   RID rid;
   // create transaction
@@ -63,6 +75,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
   for (auto key : remove_keys) {
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
+    Dump2Name(tree, bpm, "delete_test1_d", key);
   }
 
   int64_t size = 0;
@@ -90,7 +103,9 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest1) {
   delete bpm;
 }
 
-TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
+
+// DISABLED_
+TEST(BPlusTreeTests, DeleteTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -101,7 +116,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
   page_id_t page_id;
   auto header_page = bpm->NewPage(&page_id);
   // create b+ tree
-  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator);
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator, 2, 3);
   GenericKey<8> index_key;
   RID rid;
   // create transaction
@@ -113,6 +128,8 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
     tree.Insert(index_key, rid, transaction);
+
+    Dump2Name(tree, bpm, "delete_test2_i", key);
   }
 
   std::vector<RID> rids;
@@ -130,6 +147,8 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
   for (auto key : remove_keys) {
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
+
+    Dump2Name(tree, bpm, "delete_test2_d", key);
   }
 
   int64_t size = 0;

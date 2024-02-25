@@ -82,7 +82,7 @@ class BPlusTree {
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn = nullptr) -> bool;
 
   // Return the page id of the root node
-  auto GetRootPageId() -> page_id_t;
+  auto GetRootPageId() const -> page_id_t;
 
   // Index iterator
   auto Begin() -> INDEXITERATOR_TYPE;
@@ -129,6 +129,16 @@ class BPlusTree {
    * @return PrintableNode
    */
   auto ToPrintableBPlusTree(page_id_t root_id) -> PrintableBPlusTree;
+
+  void SetRootPageId(page_id_t page_id);
+
+  void FindPath(const KeyType &key, Context& ctx, bool write, Transaction *txn = nullptr);
+
+  void InsertInParent(page_id_t left_child, KeyType key, page_id_t right_child, Context& ctx);
+
+  void ChangeRoot(page_id_t left_child, KeyType key, page_id_t right_child);
+
+  void RemoveInParent(int idx, Context& ctx);
 
   // member variable
   std::string index_name_;

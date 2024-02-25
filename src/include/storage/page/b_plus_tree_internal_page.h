@@ -73,6 +73,28 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    */
   auto ValueAt(int index) const -> ValueType;
 
+  // 二分查找第一个大于等于key的位置
+  auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
+
+  auto Insert(const ValueType& left_child , const KeyType &key, const ValueType &right_child, const KeyComparator &comparator) -> int;
+
+  // 将this的[begin, end)的数据移动追加到dest
+  void MoveTo(int begin, int end, B_PLUS_TREE_INTERNAL_PAGE_TYPE& dest);
+
+  void Append(const MappingType* begin, const MappingType* end);
+
+  void SetValueAt(int index, const ValueType &value);
+
+  // for delete
+  auto Remove(int index, const KeyComparator &comparator) -> int;
+
+  void Prepend(const MappingType& entry);
+
+  void Append(const MappingType& entry);
+
+  auto PopBack() -> MappingType;
+
+  auto PopFront()-> MappingType;
   /**
    * @brief For test only, return a string representing all keys in
    * this internal page, formatted as "(key1,key2,key3,...)"
