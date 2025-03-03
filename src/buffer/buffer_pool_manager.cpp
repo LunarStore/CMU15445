@@ -43,7 +43,7 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
     *page_id = INVALID_PAGE_ID;
     std::lock_guard<std::mutex> lock(latch_);
 
-    if(NewFrameUnlocked(frame_id) == nullptr) return nullptr;
+    if (NewFrameUnlocked(frame_id) == nullptr) return nullptr;
 
     replacer_->RecordAccess(frame_id);  // 确保frame存在于replacer中，并添加一条history
     replacer_->SetEvictable(frame_id, false);
@@ -62,19 +62,19 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
 
 auto BufferPoolManager::NewFrameUnlocked(frame_id_t &frame_id) -> Page *{
     frame_id = -1;  // 初始化为无效
-    if(!free_list_.empty()){
+    if (!free_list_.empty()) {
         // 优先找free_list
         frame_id = free_list_.front();
         free_list_.pop_front();
         // BUSTUB_ASSERT(frame_id != -1, "");
-    }else{
+    } else {
         // 最坏情况，去驱除内存页
         bool ret = replacer_->Evict(&frame_id);
-        if(ret == true){    // 驱除成功
+        if (ret == true) {    // 驱除成功
             // BUSTUB_ASSERT(frame_id != -1, "");
             BUSTUB_ASSERT(pages_[frame_id].GetPinCount() == 0, "");
 
-            if(pages_[frame_id].IsDirty()){
+            if (pages_[frame_id].IsDirty()) {
                 // 脏页写回磁盘
                 disk_manager_->WritePage(pages_[frame_id].GetPageId(), pages_[frame_id].GetData());
             }
@@ -85,7 +85,7 @@ auto BufferPoolManager::NewFrameUnlocked(frame_id_t &frame_id) -> Page *{
             pages_[frame_id].pin_count_ = 0;
             pages_[frame_id].is_dirty_ = false;
 
-        }else{
+        } else {
             // 没有多余或者可驱除的frame。
             return nullptr;
         }
@@ -101,7 +101,7 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
     std::lock_guard<std::mutex> lock(latch_);
     auto target = page_table_.find(page_id);
     frame_id_t frame_id = -1;
-    if(target != page_table_.end()){
+    if (target != page_table_.end()) {
         // page在内存中
         frame_id = target->second;
 
@@ -111,9 +111,9 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
         pages_[frame_id].pin_count_++;  // 引用计数加一
 
         //return pages_ + frame_id;
-    }else{
+    } else {
         // page不在内存中
-        if(NewFrameUnlocked(frame_id) == nullptr) return nullptr;   // 缓存满
+        if (NewFrameUnlocked(frame_id) == nullptr) return nullptr;   // 缓存满
 
         replacer_->RecordAccess(frame_id);  // 确保frame存在于replacer中，并添加一条history
         replacer_->SetEvictable(frame_id, false);
@@ -141,7 +141,7 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
     auto target = page_table_.find(page_id);
 
     //合法性判断
-    if(target == page_table_.end() || pages_[target->second].GetPinCount() == 0){
+    if (target == page_table_.end() || pages_[target->second].GetPinCount() == 0) {
         return false;
     }
     frame_id_t frame_id = target->second;
@@ -150,11 +150,11 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
     pages_[frame_id].pin_count_--;
     BUSTUB_ASSERT(pages_[frame_id].GetPinCount() >= 0, "");
 
-    if(pages_[frame_id].GetPinCount() == 0){
+    if (pages_[frame_id].GetPinCount() == 0) {
         replacer_->SetEvictable(frame_id, true);
     }
 
-    if(is_dirty == true){
+    if (is_dirty == true) {
         pages_[frame_id].is_dirty_ = true;
     }
     return true;;
@@ -164,7 +164,7 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
     std::lock_guard<std::mutex> lock(latch_);
     auto target = page_table_.find(page_id);
 
-    if(target == page_table_.end()){
+    if (target == page_table_.end()) {
         // page 不在内存中
         return false;
     }
@@ -183,7 +183,7 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
 void BufferPoolManager::FlushAllPages() {
     std::lock_guard<std::mutex> lock(latch_);
 
-    for(const auto & it : page_table_){
+    for (const auto & it : page_table_) {
         page_id_t page_id = it.first;
         frame_id_t frame_id = it.second;
 
@@ -201,13 +201,13 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
 
     auto target = page_table_.find(page_id);
 
-    if(target == page_table_.end()){
+    if (target == page_table_.end()) {
         // page 不在内存中
         return true;
     }
 
 
-    if(pages_[target->second].GetPinCount() > 0){
+    if (pages_[target->second].GetPinCount() > 0) {
         return false;
     }
     frame_id_t frame_id = target->second;
@@ -215,7 +215,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
     BUSTUB_ASSERT(page_id == pages_[frame_id].GetPageId(), "");
     BUSTUB_ASSERT(pages_[frame_id].GetPinCount() == 0, "");
 
-    if(pages_[frame_id].is_dirty_ == true){
+    if (pages_[frame_id].is_dirty_ == true) {
         // 脏页写回磁盘
         disk_manager_->WritePage(page_id, pages_[frame_id].GetData());
     }
