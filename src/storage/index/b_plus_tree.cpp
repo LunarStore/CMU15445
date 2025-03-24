@@ -363,13 +363,17 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
     if(leaf_page->GetSize() == 0){
       // 空B+树
 
-      page_guard.Drop();
-      // 释放该页
-      bpm_->DeletePage(ctx.root_page_id_);
-
       // root_page_id置为无效
       // SetRootPageId(INVALID_PAGE_ID);
       ctx.header_page_.value().AsMut<BPlusTreeHeaderPage>()->root_page_id_ = INVALID_PAGE_ID;
+
+      page_guard.Drop();
+
+      // is not atomic!
+      // 释放该页
+      bpm_->DeletePage(ctx.root_page_id_);
+
+
     }
     return;
   }
@@ -585,13 +589,14 @@ void BPLUSTREE_TYPE::RemoveInParent(int idx, Context& ctx){
 
     if(internal_page->GetSize() == 1){
         page_id_t new_root_page_id = internal_page->ValueAt(0);  // 仅剩的一个孩子
-        page_guard.Drop();
-        // 释放该页
-        bpm_->DeletePage(ctx.root_page_id_);
 
         // 更新root_page_id
         // SetRootPageId(new_root_page_id);
         ctx.header_page_.value().AsMut<BPlusTreeHeaderPage>()->root_page_id_ = new_root_page_id;
+
+        page_guard.Drop();
+        // 释放该页
+        bpm_->DeletePage(ctx.root_page_id_);
     }
 
 }

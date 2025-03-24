@@ -26,6 +26,10 @@ class IndexIterator {
   IndexIterator(page_id_t page_id, size_t offset, BufferPoolManager *bpm);
   ~IndexIterator();  // NOLINT
 
+  IndexIterator(IndexIterator &&that) noexcept;
+
+  auto operator=(IndexIterator &&that) noexcept -> IndexIterator &;
+
   auto IsEnd() -> bool;
 
   auto operator*() -> const MappingType &;

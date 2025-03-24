@@ -91,7 +91,7 @@ class ReadPageGuard {
  public:
   ReadPageGuard() = default;
   ReadPageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {
-    guard_.page_->RLatch();
+    // guard_.page_->RLatch(); // 由用户上锁
     locked_ = true;
   }
   ReadPageGuard(const ReadPageGuard &) = delete;
@@ -155,7 +155,7 @@ class WritePageGuard {
  public:
   WritePageGuard() = default;
   WritePageGuard(BufferPoolManager *bpm, Page *page) : guard_(bpm, page) {
-    guard_.page_->WLatch();
+    // guard_.page_->WLatch(); // 由用户上锁
     locked_ = true;
   }
   WritePageGuard(const WritePageGuard &) = delete;

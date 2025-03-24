@@ -75,6 +75,9 @@ class Optimizer {
   auto RewriteExpressionForJoin(const AbstractExpressionRef &expr, size_t left_column_cnt, size_t right_column_cnt)
       -> AbstractExpressionRef;
 
+  auto GetRightLeftKeyForHashJoin(const AbstractExpressionRef &expr, std::vector<AbstractExpressionRef>& l_key_exprs_out, 
+    std::vector<AbstractExpressionRef>& r_key_exprs_out) -> bool;
+
   /** @brief check if the predicate is true::boolean */
   auto IsPredicateTrue(const AbstractExpressionRef &expr) -> bool;
 

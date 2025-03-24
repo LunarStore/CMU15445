@@ -242,11 +242,15 @@ auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard {
 }
 
 auto BufferPoolManager::FetchPageRead(page_id_t page_id) -> ReadPageGuard {
-    return {this, FetchPage(page_id)};
+    Page * page = FetchPage(page_id);
+    page->RLatch();
+    return {this, page};
 }
 
 auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard {
-    return {this, FetchPage(page_id)}; }
+    Page * page = FetchPage(page_id);
+    page->WLatch();
+    return {this, page}; }
 
 auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard {
     return {this, NewPage(page_id)};

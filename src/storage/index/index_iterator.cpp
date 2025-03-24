@@ -38,6 +38,35 @@ INDEXITERATOR_TYPE::~IndexIterator(){
 }  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
+INDEXITERATOR_TYPE::IndexIterator(IndexIterator &&that) noexcept : leaf_page_guard_(std::move(that.leaf_page_guard_)) {
+
+    leaf_page_id_ = that.leaf_page_id_;
+    offset_ = that.offset_;
+    leaf_page_ = that.leaf_page_;
+    bpm_ = that.bpm_;
+
+    that.leaf_page_id_ = INVALID_PAGE_ID;
+    that.offset_ = 0;
+    that.leaf_page_ = nullptr;
+    that.bpm_ = nullptr;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto INDEXITERATOR_TYPE::operator=(IndexIterator &&that) noexcept -> IndexIterator & {
+    leaf_page_id_ = that.leaf_page_id_;
+    offset_ = that.offset_;
+    leaf_page_guard_ = std::move(that.leaf_page_guard_);
+    leaf_page_ = that.leaf_page_;
+    bpm_ = that.bpm_;
+
+    that.leaf_page_id_ = INVALID_PAGE_ID;
+    that.offset_ = 0;
+    that.leaf_page_ = nullptr;
+    that.bpm_ = nullptr;
+    return *this;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::IsEnd() -> bool {
     return leaf_page_id_ == INVALID_PAGE_ID;
 }

@@ -15,6 +15,8 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <queue>
+#include <stack>
 
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
@@ -23,6 +25,37 @@
 #include "storage/table/tuple.h"
 
 namespace bustub {
+
+struct TopNKey {
+  // true increase, false decrease;
+  std::vector<std::pair<bool, Value>> sort_keys_;
+  Tuple tuple_;
+  RID rid_;
+
+  auto operator()(TopNKey lhs, TopNKey rhs) const -> bool {
+      for (int i = 0; i < (int)rhs.sort_keys_.size(); i++) {
+        const auto& [ order, l_value ] = lhs.sort_keys_[i];
+        const Value& r_value = rhs.sort_keys_[i].second;
+
+        if (order) {
+          if (l_value.CompareGreaterThan(r_value) == CmpBool::CmpTrue) {
+            return true;
+          } else if (l_value.CompareLessThan(r_value) == CmpBool::CmpTrue) {
+            return false;
+          }
+        } else {
+
+          if (l_value.CompareLessThan(r_value) == CmpBool::CmpTrue) {
+            return true;
+          } else if (l_value.CompareGreaterThan(r_value) == CmpBool::CmpTrue) {
+            return false;
+          }
+        }
+      }
+
+      return false;
+  }
+};
 
 /**
  * The TopNExecutor executor executes a topn.
@@ -58,10 +91,31 @@ class TopNExecutor : public AbstractExecutor {
   /** @return The size of top_entries_ container, which will be called on each child_executor->Next(). */
   auto GetNumInHeap() -> size_t;
 
+private:
+  /** @return The tuple as an SortKey */
+  auto MakeTopNKey(const Tuple *tuple, const RID* rid) -> TopNKey {
+
+    std::vector<std::pair<bool, Value>> keys;
+    for (const auto &expr : plan_->GetOrderBy()) {
+      bool order = false;
+      if (expr.first == OrderByType::DEFAULT || expr.first == OrderByType::ASC) {
+        order = false;
+      } else if (expr.first == OrderByType::DESC) {
+        order = true;
+      } else {
+        BUSTUB_ASSERT(false, "invalid order!");
+      }
+      keys.emplace_back(std::make_pair(order, 
+        expr.second->Evaluate(tuple, child_executor_->GetOutputSchema())));
+    }
+    return {keys, *tuple, *rid};
+  }
  private:
   /** The topn plan node to be executed */
   const TopNPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+
+  std::stack<TopNKey> stack_;
 };
 }  // namespace bustub
