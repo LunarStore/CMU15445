@@ -36,8 +36,15 @@ class TransactionManager;
  */
 class LockManager {
  public:
-  enum class LockMode { SHARED, EXCLUSIVE, INTENTION_SHARED, INTENTION_EXCLUSIVE, SHARED_INTENTION_EXCLUSIVE };
+  enum class LockMode { SHARED, EXCLUSIVE, INTENTION_SHARED, INTENTION_EXCLUSIVE, SHARED_INTENTION_EXCLUSIVE, NULL_LOCK };
 
+  std::vector<std::vector<bool>> compatibility_matrix_ = {
+    {true, false, true, false, false},
+    {false, false, false, false, false},
+    {true, false, true, true, true},
+    {false, false, true, true, false},
+    {false, false, true, false, false},
+  };
   /**
    * Structure to hold a lock request.
    * This could be a lock request on a table OR a row.
@@ -65,7 +72,8 @@ class LockManager {
   class LockRequestQueue {
    public:
     /** List of lock requests for the same resource (table or row) */
-    std::list<LockRequest *> request_queue_;
+    std::list<std::shared_ptr<LockRequest>> request_queue_;
+    std::unordered_map<txn_id_t, std::shared_ptr<LockRequest>> grantted_;
     /** For notifying blocked transactions on this rid */
     std::condition_variable cv_;
     /** txn_id of an upgrading transaction (if any) */
@@ -319,9 +327,16 @@ class LockManager {
   void GrantNewLocksIfPossible(LockRequestQueue *lock_request_queue);
   auto CanLockUpgrade(LockMode curr_lock_mode, LockMode requested_lock_mode) -> bool;
   auto CheckAppropriateLockOnTable(Transaction *txn, const table_oid_t &oid, LockMode row_lock_mode) -> bool;
-  auto FindCycle(txn_id_t source_txn, std::vector<txn_id_t> &path, std::unordered_set<txn_id_t> &on_path,
-                 std::unordered_set<txn_id_t> &visited, txn_id_t *abort_txn_id) -> bool;
+  // auto FindCycle(txn_id_t source_txn, std::vector<txn_id_t> &path, std::unordered_set<txn_id_t> &on_path,
+  //                std::unordered_set<txn_id_t> &visited, txn_id_t *abort_txn_id) -> bool;
+  auto FindCycle(txn_id_t source_txn, std::unordered_set<txn_id_t> &visited, txn_id_t *abort_txn_id) -> bool;
+  void MakeWaitsForGraph(std::shared_ptr<LockRequestQueue> lrq);
   void UnlockAll();
+  auto DeleteLockTableSets(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool;
+  auto UpdateLockTableSets(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool;
+  auto DeleteLockRowSets(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool;
+  auto UpdateLockRowSets(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool;
+  auto TransactionStateUpdate(Transaction *txn, std::shared_ptr<LockRequest> grantted_lock) -> bool;
 
   /** Structure that holds lock requests for a given table oid */
   std::unordered_map<table_oid_t, std::shared_ptr<LockRequestQueue>> table_lock_map_;
@@ -364,6 +379,8 @@ struct fmt::formatter<bustub::LockManager::LockMode> : formatter<std::string_vie
       case bustub::LockManager::LockMode::SHARED_INTENTION_EXCLUSIVE:
         name = "SHARED_INTENTION_EXCLUSIVE";
         break;
+      case bustub::LockManager::LockMode::NULL_LOCK:
+        name = "NULL_LOCK";
     }
     return formatter<string_view>::format(name, ctx);
   }

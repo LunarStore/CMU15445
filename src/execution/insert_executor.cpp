@@ -27,24 +27,50 @@ InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *
      insert_ok_(false) {}
 
 void InsertExecutor::Init() {
+    auto txn = AbstractExecutor::exec_ctx_->GetTransaction();
+    auto lmgr = AbstractExecutor::exec_ctx_->GetLockManager();
+    auto oid =  plan_->TableOid();
+    switch(txn->GetIsolationLevel()) {
+        case IsolationLevel::REPEATABLE_READ:
+        case IsolationLevel::READ_COMMITTED:
+        case IsolationLevel::READ_UNCOMMITTED:
+            if (txn->IsTableExclusiveLocked(oid) || 
+                txn->IsTableSharedIntentionExclusiveLocked(oid)) {
+                break;
+            }
+            if (!lmgr->LockTable(txn, LockManager::LockMode::INTENTION_EXCLUSIVE, plan_->TableOid())) {
+                throw ExecutionException("InsertExecutor LockTable Fail\n");
+                return ;
+            }
+            break;
+        default:
+            BUSTUB_ASSERT(false, "unknow IsolationLevel");
+
+    }
+    // BUSTUB_ASSERT(txn->IsTableIntentionExclusiveLocked(plan_->TableOid()), "!!!!!!!!!!!!");
+    // 先取锁，再对孩子进行初始化
     child_executor_->Init();
     insert_ok_ = false;
 }
 
-auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool { 
+auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     Tuple   ins_tp;
     RID     ins_rid;
     int ins_cnt = 0;
+    auto txn = AbstractExecutor::exec_ctx_->GetTransaction();
+    auto lmgr = AbstractExecutor::exec_ctx_->GetLockManager();
 
+    // BUSTUB_ASSERT(txn->IsTableIntentionExclusiveLocked(plan_->TableOid()), "!!!!!!!!!!!!");
     if (insert_ok_) return false;
     while (child_executor_->Next(&ins_tp, &ins_rid)) {
         TupleMeta meta = {
-            .insert_txn_id_ = INVALID_TXN_ID,
+            .insert_txn_id_ = txn->GetTransactionId(),
             .delete_txn_id_ = INVALID_TXN_ID,
             .is_deleted_ = false
         };
 
-        *rid = table_info_->table_->InsertTuple(meta, ins_tp).value();
+        *rid = table_info_->table_->InsertTuple(meta, ins_tp, lmgr, txn, plan_->TableOid()).value();
+        txn->AppendTableWriteRecord({plan_->TableOid(), *rid, table_info_->table_.get(), WType::INSERT});
 
         for (auto it : indexs_) {
 
@@ -55,13 +81,17 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
 
             it->index_->DeleteEntry(key,  
                 ins_rid,
-                nullptr
+                txn
             );
             it->index_->InsertEntry(
                 key,  
                 *rid,
-                nullptr
+                txn
             );
+
+            txn->AppendIndexWriteRecord({*rid, plan_->TableOid(), 
+                WType::INSERT, ins_tp, 
+                it->index_oid_, AbstractExecutor::exec_ctx_->GetCatalog()});
         }
         ins_cnt++;
     }

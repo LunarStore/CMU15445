@@ -62,21 +62,6 @@ TEST(BPlusTreeTests, InsertTest1) {
   delete bpm;
 }
 
-void Dump2Name(BPlusTree<GenericKey<8>, RID, GenericComparator<8>> &tree, BufferPoolManager *bpm, const char *pattern,
-               int64_t key) {
-  const int max_size = 100;
-
-  char name[max_size];
-  snprintf(name, max_size, "/root/workspace/CMU15445/build/%s%ld.txt", pattern, key);
-
-  tree.Draw(bpm, name);
-
-  snprintf(name, max_size, "dot -Tpng -O /root/workspace/CMU15445/build/%s%ld.txt", pattern, key);
-
-  std::cout << "name is " << name << std::endl;
-  system(name);
-}
-
 TEST(BPlusTreeTests, InsertTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
@@ -100,8 +85,6 @@ TEST(BPlusTreeTests, InsertTest2) {
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
     tree.Insert(index_key, rid, transaction);
-
-    Dump2Name(tree, bpm, "i-", key);
   }
 
   std::vector<RID> rids;

@@ -31,6 +31,18 @@ TableIterator::TableIterator(TableHeap *table_heap, RID rid, RID stop_at_rid)
   }
 }
 
+auto TableIterator::operator=(TableIterator &&that) -> TableIterator& {
+  table_heap_ = that.table_heap_;
+  rid_ = that.rid_;
+  stop_at_rid_ = that.stop_at_rid_;
+
+  that.table_heap_ = nullptr;
+  that.rid_ = RID();
+  that.stop_at_rid_ = RID();
+
+  return *this;
+}
+
 auto TableIterator::GetTuple() -> std::pair<TupleMeta, Tuple> { return table_heap_->GetTuple(rid_); }
 
 auto TableIterator::GetRID() -> RID { return rid_; }

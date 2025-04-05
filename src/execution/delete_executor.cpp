@@ -35,18 +35,18 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     Tuple   d_tp;
     RID     d_rid;
     int d_cnt = 0;
-
+    auto txn = AbstractExecutor::exec_ctx_->GetTransaction();
     if (delete_ok_) return false;
 
     while (child_executor_->Next(&d_tp, &d_rid)) {
         TupleMeta meta = {
             .insert_txn_id_ = INVALID_TXN_ID,
-            .delete_txn_id_ = INVALID_TXN_ID,
+            .delete_txn_id_ = txn->GetTransactionId(),
             .is_deleted_ = true
         };
 
         table_info_->table_->UpdateTupleMeta(meta, d_rid);
-
+        txn->AppendTableWriteRecord({plan_->TableOid(), d_rid, table_info_->table_.get(), WType::DELETE});
 
         for (auto it : indexs_) {
 
@@ -56,8 +56,12 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
             );
             it->index_->DeleteEntry(key,  
                 d_rid,
-                nullptr
+                txn
             );
+
+            txn->AppendIndexWriteRecord({d_rid, plan_->TableOid(), 
+                WType::DELETE, d_tp, 
+                it->index_oid_, AbstractExecutor::exec_ctx_->GetCatalog()});
         }
         d_cnt++;
     }

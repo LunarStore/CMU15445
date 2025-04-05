@@ -38,7 +38,7 @@ class TableIterator {
   TableIterator(TableIterator &&) = default;
 
   ~TableIterator() = default;
-
+  auto operator=(TableIterator && that) -> TableIterator&;
   auto GetTuple() -> std::pair<TupleMeta, Tuple>;
 
   auto GetRID() -> RID;
